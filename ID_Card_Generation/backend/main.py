@@ -94,12 +94,13 @@ Designation:{data['designation']}
 
     card.paste(qr, (670, 300))
 
-    filename = f"{data['employee_id']}.png"
-    output_path = os.path.join(CARD_DIR, filename)
-
-    card.save(output_path)
-
-    return output_path
+    buffer = BytesIO()
+    
+    card.save(buffer, format="PNG")
+    
+    buffer.seek(0)
+    
+    return buffer
 
 
 @app.post("/generate-id")
@@ -121,7 +122,7 @@ async def generate_id(
     with open(photo_path, "wb") as f:
         f.write(await photo.read())
 
-    card_path = create_id_card(
+    card_buffer = create_id_card(
         {
             "name": name,
             "age": age,
@@ -132,9 +133,12 @@ async def generate_id(
         },
         photo_path
     )
-
-    return FileResponse(
-        card_path,
+    
+    return StreamingResponse(
+        card_buffer,
         media_type="image/png",
-        filename=f"{employee_id}.png"
+        headers={
+            "Content-Disposition":
+            f"attachment; filename={employee_id}.png"
+        }
     )
